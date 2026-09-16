@@ -28,6 +28,14 @@ export function ChevronRight(props: IconProps) {
   );
 }
 
+export function ChevronUp(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m18 15-6-6-6 6" />
+    </svg>
+  );
+}
+
 export function ChevronDown(props: IconProps) {
   return (
     <svg {...base} {...props}>

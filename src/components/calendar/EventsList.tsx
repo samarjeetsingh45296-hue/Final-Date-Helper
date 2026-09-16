@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MAX_YEAR, MIN_YEAR, MONTH_NAMES, WEEKDAY_LONG } from "@/lib/calendar";
 import { CATEGORY_LABEL, daysUntil, getFestivalsForYear, type Festival } from "@/lib/festivals";
 import ThemeToggle from "@/components/ui/ThemeToggle";
-import { ChevronLeft, ChevronRight } from "@/components/ui/icons";
+import { ChevronLeft, ChevronRight, ChevronUp } from "@/components/ui/icons";
 import FestivalBadge from "./FestivalBadge";
 
 interface EventsListProps {
@@ -131,6 +131,42 @@ function TodayMarker({ iso }: { iso: string }) {
         <span className="h-px flex-1 bg-gradient-to-r from-accent/60 to-transparent" />
       </div>
     </li>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Back to top                                                               */
+/* -------------------------------------------------------------------------- */
+
+function BackToTop({ reduceMotion }: { reduceMotion: boolean }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 480);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
+          aria-label="Back to top"
+          title="Back to top"
+          initial={{ opacity: 0, y: 12, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.9 }}
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.94 }}
+          transition={{ type: "spring", stiffness: 420, damping: 30 }}
+          className="print-hide fixed bottom-5 right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface/90 text-ink-2 shadow-pop backdrop-blur-sm transition-colors hover:border-accent/50 hover:text-accent sm:bottom-6 sm:right-6"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </motion.button>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -355,6 +391,8 @@ export default function EventsList({ year }: EventsListProps) {
         Lunar festival dates follow the lunisolar calendar and may shift by a day depending on region or moon
         sighting. Click any date or month name to open it on the calendar.
       </p>
+
+      <BackToTop reduceMotion={reduceMotion} />
     </main>
   );
 }
