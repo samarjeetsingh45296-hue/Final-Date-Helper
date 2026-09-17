@@ -14,8 +14,9 @@ interface EventsListProps {
   year: number;
 }
 
-type View = "festivals" | "holidays" | "exams" | "results";
+type View = "all" | "festivals" | "holidays" | "exams" | "results";
 type Tone = "festival" | "exam" | "result";
+type ViewTone = Tone | "all";
 type BadgeTone = React.ComponentProps<typeof FestivalBadge>["tone"];
 
 /** One row on the timeline, whichever data set it came from */
@@ -33,7 +34,8 @@ interface Item {
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const VIEWS: Array<{ key: View; label: string; icon: string; tone: Tone; noun: [string, string] }> = [
+const VIEWS: Array<{ key: View; label: string; icon: string; tone: ViewTone; noun: [string, string] }> = [
+  { key: "all", label: "All", icon: "✨", tone: "all", noun: ["event", "events"] },
   { key: "festivals", label: "Festivals", icon: "🎉", tone: "festival", noun: ["festival", "festivals"] },
   { key: "holidays", label: "Holidays", icon: "🏖️", tone: "festival", noun: ["holiday", "holidays"] },
   { key: "exams", label: "Exam dates", icon: "📝", tone: "exam", noun: ["exam", "exams"] },
@@ -41,6 +43,14 @@ const VIEWS: Array<{ key: View; label: string; icon: string; tone: Tone; noun: [
 ];
 
 const TONE = {
+  all: {
+    text: "text-accent",
+    bar: "bg-accent/70 group-hover:bg-accent",
+    node: "bg-accent text-white shadow-[0_10px_24px_-8px_var(--color-accent)]",
+    ping: "bg-accent/40",
+    pill: "bg-accent",
+    active: "brand-gradient text-white shadow-[0_8px_18px_-8px_var(--color-accent)]",
+  },
   festival: {
     text: "text-fest-strong",
     bar: "bg-fest/70 group-hover:bg-fest",
@@ -78,6 +88,11 @@ function todayIso(d: Date): string {
 /* -------------------------------------------------------------------------- */
 
 function buildItems(year: number, view: View): Item[] {
+  if (view === "all") {
+    return [...buildItems(year, "festivals"), ...buildItems(year, "exams"), ...buildItems(year, "results")].sort(
+      (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0),
+    );
+  }
   if (view === "festivals" || view === "holidays") {
     return getFestivalsForYear(year)
       .filter((f) => (view === "holidays" ? f.isHoliday : true))
@@ -129,12 +144,14 @@ function Entry({
   daysAway,
   index,
   reduceMotion,
+  showKind,
 }: {
   item: Item;
   state: "past" | "next" | "future";
   daysAway: number | null;
   index: number;
   reduceMotion: boolean;
+  showKind: boolean;
 }) {
   const [y, m, d] = item.date.split("-").map(Number);
   const weekday = WEEKDAY_LONG[new Date(y, m - 1, d).getDay()];
@@ -142,6 +159,7 @@ function Entry({
   const isPast = state === "past";
   const t = TONE[item.tone];
   const delay = `${Math.min(index, 6) * 60}ms`;
+  const kindLabel = item.tone === "festival" ? "Festival" : item.tone === "exam" ? "Exam" : "Result";
 
   return (
     <li
@@ -184,6 +202,11 @@ function Entry({
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink-2">{item.description}</p>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {showKind && (
+            <FestivalBadge tone={item.tone} size="md">
+              {kindLabel}
+            </FestivalBadge>
+          )}
           {item.badges.map((b, i) => (
             <FestivalBadge key={i} tone={b.tone} size="md" title={b.title}>
               {b.label}
@@ -260,7 +283,7 @@ function BackToTop({ reduceMotion }: { reduceMotion: boolean }) {
 
 export default function EventsList({ year }: EventsListProps) {
   const reduceMotion = useReducedMotion() ?? false;
-  const [view, setView] = useState<View>("festivals");
+  const [view, setView] = useState<View>("all");
   const [today, setToday] = useState<Date | null>(null);
   useEffect(() => {
     queueMicrotask(() => setToday(new Date()));
@@ -341,7 +364,15 @@ export default function EventsList({ year }: EventsListProps) {
       >
         <div>
           <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${t.text}`}>
-            {view === "exams" ? "Exam timeline" : view === "results" ? "Result timeline" : view === "holidays" ? "Holiday timeline" : "Festival timeline"}
+            {view === "all"
+              ? "Complete timeline"
+              : view === "exams"
+                ? "Exam timeline"
+                : view === "results"
+                  ? "Result timeline"
+                  : view === "holidays"
+                    ? "Holiday timeline"
+                    : "Festival timeline"}
           </p>
           <h1 className="mt-2 text-[56px] font-semibold leading-none tracking-[-0.04em] text-ink sm:text-[88px]">{year}</h1>
         </div>
@@ -476,6 +507,7 @@ export default function EventsList({ year }: EventsListProps) {
                         daysAway={today ? daysUntil(item.date, today) : null}
                         index={i}
                         reduceMotion={reduceMotion}
+                        showKind={view === "all"}
                       />
                     </Fragment>
                   );
