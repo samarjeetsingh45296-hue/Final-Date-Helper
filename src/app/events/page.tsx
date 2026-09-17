@@ -3,7 +3,7 @@ import EventsList from "@/components/calendar/EventsList";
 import { MAX_YEAR, MIN_YEAR } from "@/lib/calendar";
 
 export const metadata: Metadata = {
-  title: "Events · Festival Calendar",
+  title: "Events · CCC Master Calendar",
   description: "Every festival of the year, month by month.",
 };
 

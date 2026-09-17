@@ -6,6 +6,7 @@ import { buildMonthGrid, MONTH_NAMES } from "@/lib/calendar";
 import { getFestivalsForMonth, getFestivalsForYear, indexByDate } from "@/lib/festivals";
 import { getExamEventsForMonth, type ExamEvent } from "@/lib/exams";
 import { indexUserEvents, useUserEvents } from "@/lib/userEvents";
+import { indexTodos, useTodos } from "@/lib/todos";
 import { useCalendar } from "@/hooks/useCalendar";
 import { Keyboard } from "@/components/ui/icons";
 import CalendarHeader from "./CalendarHeader";
@@ -88,6 +89,7 @@ export default function CalendarDashboard() {
   const [filters, setFilters] = useState<Filters>({ festivals: true, exams: true, results: true });
   const [openDay, setOpenDay] = useState<string | null>(null);
   const userEvents = useUserEvents();
+  const todos = useTodos();
 
   /* ----- Derived data (memoised: only recomputed when the month changes) --- */
   const festivals = useMemo(
@@ -115,6 +117,7 @@ export default function CalendarDashboard() {
   }, [userEvents, view]);
   const userEventsByDate = useMemo(() => indexUserEvents(monthUserEvents), [monthUserEvents]);
   const deadlineCount = monthUserEvents.filter((u) => u.kind === "deadline").length;
+  const todosByDate = useMemo(() => indexTodos(todos), [todos]);
   const cells = useMemo(
     () => (view && today ? buildMonthGrid(view, today) : []),
     [view, today],
@@ -206,6 +209,7 @@ export default function CalendarDashboard() {
             festivalsByDate={festivalsByDate}
             examsByDate={examsByDate}
             userEventsByDate={userEventsByDate}
+            todosByDate={todosByDate}
             onOpenDay={setOpenDay}
             direction={direction}
             isLoading={isLoading || cells.length === 0}
@@ -284,6 +288,7 @@ export default function CalendarDashboard() {
         festivals={openDay ? (festivalsByDate.get(openDay) ?? []) : []}
         exams={openDay ? (examsByDate.get(openDay) ?? []) : []}
         userEvents={openDay ? (userEventsByDate.get(openDay) ?? []) : []}
+        todos={openDay ? (todosByDate.get(openDay) ?? []) : []}
         onClose={closeDay}
       />
 

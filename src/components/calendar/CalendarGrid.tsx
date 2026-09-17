@@ -5,6 +5,7 @@ import { WEEKDAY_LONG, WEEKDAY_SHORT, type DayCell } from "@/lib/calendar";
 import type { Festival } from "@/lib/festivals";
 import type { ExamEvent } from "@/lib/exams";
 import type { UserEvent } from "@/lib/userEvents";
+import type { Todo } from "@/lib/todos";
 import type { Direction } from "@/hooks/useCalendar";
 import CalendarDayCard from "./CalendarDayCard";
 import SkeletonGrid from "./SkeletonGrid";
@@ -16,6 +17,7 @@ interface CalendarGridProps {
   festivalsByDate: Map<string, Festival[]>;
   examsByDate: Map<string, ExamEvent[]>;
   userEventsByDate: Map<string, UserEvent[]>;
+  todosByDate: Map<string, Todo[]>;
   onOpenDay: (key: string) => void;
   direction: Direction;
   isLoading: boolean;
@@ -60,6 +62,7 @@ export default function CalendarGrid({
   festivalsByDate,
   examsByDate,
   userEventsByDate,
+  todosByDate,
   onOpenDay,
   direction,
   isLoading,
@@ -119,6 +122,7 @@ export default function CalendarGrid({
                   festivals={festivalsByDate.get(cell.key) ?? []}
                   exams={examsByDate.get(cell.key) ?? []}
                   userEvents={userEventsByDate.get(cell.key) ?? []}
+                  todos={todosByDate.get(cell.key) ?? []}
                   onOpen={onOpenDay}
                   reduceMotion={reduceMotion}
                 />

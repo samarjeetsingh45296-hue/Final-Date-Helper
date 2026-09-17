@@ -60,10 +60,10 @@ export default function CalendarHeader({
         </motion.div>
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
-            Festival Calendar
+            CCC Master Calendar
           </h1>
           <p className="truncate text-[13px] text-ink-2">
-            Month view · Indian festivals, automatically highlighted
+            Month view · festivals, exams, results and your tasks in one place
           </p>
         </div>
       </div>

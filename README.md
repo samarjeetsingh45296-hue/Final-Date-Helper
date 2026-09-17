@@ -1,4 +1,4 @@
-# Festival Calendar
+# CCC Master Calendar
 
 A premium month-view calendar dashboard built with Next.js, TypeScript, Tailwind CSS v4 and Framer Motion.
 A built-in festival engine surfaces Indian festivals
@@ -25,7 +25,7 @@ Open http://localhost:3000.
 - Print button in the top bar; deep links (?y=2026&m=9) open a specific month; each day popup can export its events as .ics
 - Swipe on touch screens to change month
 - "Events" button in the top bar opens the /events page: every festival of the year, month by month, date on the left and name on the right
-- Click any day to open a popup listing everything on it and add your own events; "Last date" entries turn the day purple, plain events indigo, and already-coloured days get a highlight ring (saved in the browser)
+- Click any day to open a popup listing everything on it, add your own events, and keep a tickable to-do list for that day; "Last date" entries turn the day purple, plain events indigo, and already-coloured days get a highlight ring (saved in the browser)
 - Light and dark themes, responsive from phone to desktop, reduced-motion aware
 
 ## Structure
@@ -38,7 +38,7 @@ src/
                            FestivalBadge, FestivalBullets, DayPopover, EventsList, SkeletonGrid
   components/ui/           Select, ThemeToggle, icons
   hooks/                   useCalendar
-  lib/                     calendar (date helpers), festivals, exams (data engines), userEvents (local storage), ics (export)
+  lib/                     calendar (date helpers), festivals, exams (data engines), userEvents, todos (local storage), ics (export)
 ```
 
 ## Festival & exam data

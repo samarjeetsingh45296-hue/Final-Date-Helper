@@ -6,6 +6,7 @@ import { formatLongDate, WEEKDAY_LONG, type DayCell } from "@/lib/calendar";
 import type { Festival } from "@/lib/festivals";
 import type { ExamEvent } from "@/lib/exams";
 import type { UserEvent } from "@/lib/userEvents";
+import type { Todo } from "@/lib/todos";
 import { Plus } from "@/components/ui/icons";
 import FestivalBadge from "./FestivalBadge";
 
@@ -14,6 +15,7 @@ interface CalendarDayCardProps {
   festivals: Festival[];
   exams: ExamEvent[];
   userEvents: UserEvent[];
+  todos: Todo[];
   onOpen: (key: string) => void;
   reduceMotion: boolean;
 }
@@ -34,13 +36,14 @@ const CELL_SIZE =
 
 type BadgeTone = "festival" | "exam" | "result" | "due" | "note";
 
-function CalendarDayCard({ cell, festivals, exams, userEvents, onOpen, reduceMotion }: CalendarDayCardProps) {
+function CalendarDayCard({ cell, festivals, exams, userEvents, todos, onOpen, reduceMotion }: CalendarDayCardProps) {
   const festival = festivals[0];
   const exam = exams.find((e) => e.kind === "exam");
   const result = exams.find((e) => e.kind === "result");
   const deadline = userEvents.find((u) => u.kind === "deadline");
   const note = userEvents.find((u) => u.kind === "event");
   const total = festivals.length + exams.length + userEvents.length;
+  const doneTodos = todos.filter((t) => t.done).length;
   const { isToday, isCurrentMonth } = cell;
 
   /* ----- Outside-month filler cell -------------------------------------- */
@@ -116,6 +119,7 @@ function CalendarDayCard({ cell, festivals, exams, userEvents, onOpen, reduceMot
     ...festivals.map((f) => f.name),
     ...exams.map((e) => e.name),
     ...userEvents.map((u) => (u.kind === "deadline" ? `Last date: ${u.title}` : u.title)),
+    todos.length ? `${doneTodos} of ${todos.length} tasks done` : null,
     "Press Enter to open",
   ]
     .filter(Boolean)
@@ -223,6 +227,20 @@ function CalendarDayCard({ cell, festivals, exams, userEvents, onOpen, reduceMot
             </span>
           )}
         </div>
+      )}
+
+      {/* Task progress pill */}
+      {todos.length > 0 && (
+        <span
+          className={`${total > 0 ? "mt-1" : "mt-auto"} hidden w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset sm:inline-flex ${
+            doneTodos === todos.length
+              ? "bg-fest/10 text-fest-strong ring-fest/30"
+              : "bg-surface-2 text-ink-2 ring-line"
+          }`}
+          title={`${doneTodos} of ${todos.length} tasks done`}
+        >
+          {doneTodos === todos.length ? "✓" : "☐"} {doneTodos}/{todos.length}
+        </span>
       )}
     </motion.div>
   );

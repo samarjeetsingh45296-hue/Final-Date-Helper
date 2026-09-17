@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Festival Calendar",
+  title: "CCC Master Calendar",
   description:
-    "A premium month-view calendar with automatic Sunday highlighting and an Indian festival intelligence engine.",
+    "CCC Master Calendar — a premium month-view calendar with Indian festivals, exam and result dates, and your own tasks.",
 };
 
 export const viewport: Viewport = {

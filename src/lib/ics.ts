@@ -32,7 +32,7 @@ export function buildIcs(events: IcsEvent[], calendarName: string): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Festival Calendar//EN",
+    "PRODID:-//CCC Master Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(calendarName)}`,
