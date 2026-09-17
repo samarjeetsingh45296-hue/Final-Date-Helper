@@ -36,7 +36,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="ambient flex min-h-full flex-col">
+      {/* suppressHydrationWarning: browser extensions may inject attributes on <body>
+          before React hydrates; those differences are harmless and must not error. */}
+      <body className="ambient flex min-h-full flex-col" suppressHydrationWarning>
         {/* Slow-drifting ambient colour blobs */}
         <div aria-hidden className="blob blob-a" />
         <div aria-hidden className="blob blob-b" />
