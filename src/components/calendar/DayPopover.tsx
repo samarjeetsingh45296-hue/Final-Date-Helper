@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { formatLongDate, WEEKDAY_LONG } from "@/lib/calendar";
+import { MONTH_NAMES, WEEKDAY_LONG } from "@/lib/calendar";
 import type { Festival } from "@/lib/festivals";
 import type { ExamEvent } from "@/lib/exams";
-import { addUserEvent, removeUserEvent, USER_KIND_LABEL, type UserEvent, type UserEventKind } from "@/lib/userEvents";
+import { addUserEvent, removeUserEvent, type UserEvent } from "@/lib/userEvents";
 import { addTodo, clearDoneTodos, removeTodo, toggleTodo, type Todo } from "@/lib/todos";
 import { downloadIcs, type IcsEvent } from "@/lib/ics";
 import { Check } from "@/components/ui/icons";
-import FestivalBadge from "./FestivalBadge";
 
 interface DayPopoverProps {
   /** ISO date of the open day, or null when closed */
@@ -21,65 +20,73 @@ interface DayPopoverProps {
   onClose: () => void;
 }
 
+type Mode = "task" | "event" | "deadline";
+type Tone = "festival" | "exam" | "result" | "due" | "note" | "neutral";
+
 function parse(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-const DOT = {
-  festival: "bg-fest",
-  exam: "bg-exam",
-  result: "bg-result",
-  due: "bg-due",
-  note: "bg-accent",
-} as const;
+/* Soft header tints per dominant item type */
+const HEADER_TINT: Record<Tone, string> = {
+  festival: "from-fest/20 via-fest/5",
+  exam: "from-exam/20 via-exam/5",
+  result: "from-result/20 via-result/5",
+  due: "from-due/20 via-due/5",
+  note: "from-accent/20 via-accent/5",
+  neutral: "from-accent/15 via-accent/5",
+};
+
+const ICON_TILE: Record<Exclude<Tone, "neutral">, string> = {
+  festival: "bg-fest-soft ring-fest-line",
+  exam: "bg-exam-soft ring-exam-line",
+  result: "bg-result-soft ring-result-line",
+  due: "bg-due-soft ring-due-line",
+  note: "bg-accent-soft ring-accent-line",
+};
+
+const LABEL_TEXT: Record<Exclude<Tone, "neutral">, string> = {
+  festival: "text-fest-strong",
+  exam: "text-exam-strong",
+  result: "text-result-strong",
+  due: "text-due-strong",
+  note: "text-accent",
+};
 
 /* -------------------------------------------------------------------------- */
-/*  Small pieces                                                              */
+/*  Pieces                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <div className="mb-1.5 flex items-center justify-between px-1">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">{children}</p>
-      {aside && <span className="text-[11px] tabular-nums text-ink-3">{aside}</span>}
-    </div>
-  );
-}
-
-function Row({
+function Item({
   tone,
   icon,
   title,
-  meta,
-  tag,
+  label,
   onRemove,
 }: {
-  tone: keyof typeof DOT;
+  tone: Exclude<Tone, "neutral">;
   icon: string;
   title: string;
-  meta?: string;
-  tag?: React.ReactNode;
+  label: string;
   onRemove?: () => void;
 }) {
   return (
     <motion.li
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      className="group flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
+      exit={{ opacity: 0, x: -10 }}
+      className="group flex items-center gap-3 py-2"
     >
-      <span aria-hidden className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${DOT[tone]}`} />
-      <span aria-hidden className="text-[15px] leading-5">
-        {icon}
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[17px] ring-1 ring-inset ${ICON_TILE[tone]}`}>
+        <span aria-hidden>{icon}</span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[13px] font-semibold leading-5 text-ink">{title}</span>
-          {tag}
+        <span className="block truncate text-[13.5px] font-semibold leading-tight text-ink">{title}</span>
+        <span className={`mt-0.5 block text-[10.5px] font-semibold uppercase tracking-[0.12em] ${LABEL_TEXT[tone]}`}>
+          {label}
         </span>
-        {meta && <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-snug text-ink-2">{meta}</span>}
       </span>
       {onRemove && (
         <button
@@ -87,7 +94,7 @@ function Row({
           onClick={onRemove}
           aria-label={`Remove ${title}`}
           title="Remove"
-          className="rounded-md px-1 text-[15px] leading-5 text-ink-3 opacity-0 transition-[opacity,color] hover:text-result focus-visible:opacity-100 group-hover:opacity-100"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] leading-none text-ink-3 opacity-0 transition-[opacity,color,background-color] hover:bg-surface-2 hover:text-result focus-visible:opacity-100 group-hover:opacity-100"
         >
           ×
         </button>
@@ -96,14 +103,14 @@ function Row({
   );
 }
 
-function TodoItem({ todo }: { todo: Todo }) {
+function TaskItem({ todo }: { todo: Todo }) {
   return (
     <motion.li
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
+      exit={{ opacity: 0, x: -10 }}
+      className="group flex items-center gap-3 py-1.5"
     >
       <button
         type="button"
@@ -111,20 +118,18 @@ function TodoItem({ todo }: { todo: Todo }) {
         aria-checked={todo.done}
         onClick={() => toggleTodo(todo.id)}
         aria-label={todo.done ? `Mark "${todo.text}" as not done` : `Mark "${todo.text}" as done`}
-        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-[background-color,border-color,transform] duration-200 active:scale-90 ${
-          todo.done
-            ? "border-fest bg-fest text-white shadow-[0_4px_10px_-4px_var(--color-fest)]"
-            : "border-line-strong bg-surface hover:border-accent"
+        className={`relative flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-[background-color,border-color,transform] duration-200 active:scale-90 ${
+          todo.done ? "border-fest bg-fest text-white" : "border-line-strong bg-surface hover:border-fest"
         }`}
       >
         <AnimatePresence initial={false}>
           {todo.done && (
             <motion.span
               key="tick"
-              initial={{ scale: 0.4, opacity: 0 }}
+              initial={{ scale: 0.3, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.4, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 600, damping: 26 }}
+              exit={{ scale: 0.3, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 600, damping: 24 }}
               className="flex"
             >
               <Check className="h-3 w-3" strokeWidth={3} />
@@ -133,13 +138,8 @@ function TodoItem({ todo }: { todo: Todo }) {
         </AnimatePresence>
       </button>
 
-      <span
-        className={`relative min-w-0 flex-1 text-[13px] leading-5 transition-colors duration-300 ${
-          todo.done ? "text-ink-3" : "text-ink"
-        }`}
-      >
+      <span className={`relative min-w-0 flex-1 text-[13.5px] leading-5 transition-colors duration-300 ${todo.done ? "text-ink-3" : "text-ink"}`}>
         {todo.text}
-        {/* animated strike-through */}
         <motion.span
           aria-hidden
           initial={false}
@@ -154,7 +154,7 @@ function TodoItem({ todo }: { todo: Todo }) {
         onClick={() => removeTodo(todo.id)}
         aria-label={`Delete "${todo.text}"`}
         title="Delete"
-        className="rounded-md px-1 text-[15px] leading-5 text-ink-3 opacity-0 transition-[opacity,color] hover:text-result focus-visible:opacity-100 group-hover:opacity-100"
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] leading-none text-ink-3 opacity-0 transition-[opacity,color,background-color] hover:bg-surface-2 hover:text-result focus-visible:opacity-100 group-hover:opacity-100"
       >
         ×
       </button>
@@ -162,16 +162,51 @@ function TodoItem({ todo }: { todo: Todo }) {
   );
 }
 
+/** Circular progress indicator for the task list */
+function ProgressRing({ done, total }: { done: number; total: number }) {
+  const r = 14;
+  const c = 2 * Math.PI * r;
+  const pct = total ? done / total : 0;
+  const complete = total > 0 && done === total;
+  return (
+    <span className="relative inline-flex h-9 w-9 items-center justify-center" aria-hidden>
+      <svg viewBox="0 0 36 36" className="h-9 w-9 -rotate-90">
+        <circle cx="18" cy="18" r={r} fill="none" stroke="var(--color-line)" strokeWidth="3" />
+        <motion.circle
+          cx="18"
+          cy="18"
+          r={r}
+          fill="none"
+          stroke={complete ? "var(--color-fest)" : "var(--color-accent)"}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          initial={false}
+          animate={{ strokeDashoffset: c * (1 - pct) }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        />
+      </svg>
+      <span className={`absolute text-[10px] font-semibold tabular-nums ${complete ? "text-fest-strong" : "text-ink-2"}`}>
+        {complete ? "✓" : `${done}/${total}`}
+      </span>
+    </span>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Popup                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** Centered dialog for one day: what's on, a to-do list, and an add form. */
+const MODE_META: Record<Mode, { label: string; icon: string; placeholder: string; active: string }> = {
+  task: { label: "Task", icon: "☑", placeholder: "Add a task for this day…", active: "bg-fest text-white" },
+  event: { label: "Event", icon: "📌", placeholder: "Add an event…", active: "bg-accent text-white" },
+  deadline: { label: "Last date", icon: "⏳", placeholder: "Add a last date…", active: "bg-due text-white" },
+};
+
 export default function DayPopover({ dateKey, festivals, exams, userEvents, todos, onClose }: DayPopoverProps) {
-  const [title, setTitle] = useState("");
-  const [kind, setKind] = useState<UserEventKind>("event");
-  const [todoText, setTodoText] = useState("");
-  const todoRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<Mode>("task");
+  const [text, setText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const open = dateKey !== null;
 
   // Escape closes; lock page scroll while open
@@ -190,45 +225,46 @@ export default function DayPopover({ dateKey, festivals, exams, userEvents, todo
     };
   }, [open, onClose]);
 
-  const submitEvent = (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dateKey || !title.trim()) return;
-    addUserEvent({ date: dateKey, title, kind });
-    setTitle("");
-    setKind("event");
+    if (!dateKey || !text.trim()) return;
+    if (mode === "task") addTodo(dateKey, text);
+    else addUserEvent({ date: dateKey, title: text, kind: mode });
+    setText("");
+    inputRef.current?.focus();
   };
 
-  const submitTodo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!dateKey || !todoText.trim()) return;
-    addTodo(dateKey, todoText);
-    setTodoText("");
-    todoRef.current?.focus();
-  };
-
+  const date = dateKey ? parse(dateKey) : null;
   const total = festivals.length + exams.length + userEvents.length;
-  const doneCount = todos.filter((t) => t.done).length;
-  const progress = todos.length ? Math.round((doneCount / todos.length) * 100) : 0;
-  const allDone = todos.length > 0 && doneCount === todos.length;
+  const done = todos.filter((t) => t.done).length;
+  const allDone = todos.length > 0 && done === todos.length;
+
+  const dominant: Tone = festivals[0]
+    ? "festival"
+    : exams.find((e) => e.kind === "exam")
+      ? "exam"
+      : exams.find((e) => e.kind === "result")
+        ? "result"
+        : userEvents.find((u) => u.kind === "deadline")
+          ? "due"
+          : userEvents.length
+            ? "note"
+            : "neutral";
 
   const exportDay = () => {
-    if (!dateKey) return;
+    if (!dateKey || !date) return;
     const items: IcsEvent[] = [
       ...festivals.map((f) => ({ uid: f.id, date: f.date, title: `${f.icon} ${f.name}`, description: f.description })),
       ...exams.map((x) => ({ uid: x.id, date: x.date, title: `${x.icon} ${x.name}`, description: `${x.org} · ${x.description}` })),
-      ...userEvents.map((u) => ({
-        uid: u.id,
-        date: u.date,
-        title: `${u.kind === "deadline" ? "⏳ Last date: " : "📌 "}${u.title}`,
-      })),
+      ...userEvents.map((u) => ({ uid: u.id, date: u.date, title: `${u.kind === "deadline" ? "⏳ Last date: " : "📌 "}${u.title}` })),
       ...todos.map((t) => ({ uid: t.id, date: t.date, title: `${t.done ? "☑" : "☐"} ${t.text}` })),
     ];
-    downloadIcs(items, formatLongDate(parse(dateKey)), `ccc-master-calendar-${dateKey}`);
+    downloadIcs(items, `${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`, `ccc-master-calendar-${dateKey}`);
   };
 
   return (
     <AnimatePresence>
-      {open && dateKey && (
+      {open && dateKey && date && (
         <motion.div
           key="backdrop"
           initial={{ opacity: 0 }}
@@ -236,49 +272,41 @@ export default function DayPopover({ dateKey, festivals, exams, userEvents, todo
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 p-0 backdrop-blur-md sm:items-center sm:p-6"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 p-0 backdrop-blur-md sm:items-center sm:p-6"
         >
           <motion.div
             key={dateKey}
             role="dialog"
             aria-modal="true"
             aria-labelledby="day-popover-title"
-            initial={{ opacity: 0, y: 28, scale: 0.96 }}
+            initial={{ opacity: 0, y: 32, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 360, damping: 32, mass: 0.8 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-t-2xl border border-line bg-surface shadow-pop sm:rounded-2xl"
+            className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop ring-1 ring-line sm:rounded-3xl"
           >
-            {/* Accent strip */}
-            <span aria-hidden className="brand-gradient absolute inset-x-0 top-0 h-1" />
-
-            <div className="max-h-[88vh] overflow-y-auto p-4 pt-5 sm:p-5 sm:pt-6">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 flex-col items-center justify-center rounded-xl border border-line bg-surface-2 shadow-card">
-                    <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-                      {WEEKDAY_LONG[parse(dateKey).getDay()].slice(0, 3)}
+            {/* Header */}
+            <div className={`relative bg-gradient-to-b to-transparent px-6 pb-5 pt-6 ${HEADER_TINT[dominant]}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-3">
+                    {WEEKDAY_LONG[date.getDay()]}
+                  </p>
+                  <h3 id="day-popover-title" className="mt-1 flex items-baseline gap-2">
+                    <span className="text-[44px] font-semibold leading-none tracking-[-0.04em] text-ink">{date.getDate()}</span>
+                    <span className="text-[17px] font-medium text-ink-2">
+                      {MONTH_NAMES[date.getMonth()]} {date.getFullYear()}
                     </span>
-                    <span className="text-xl font-semibold leading-none tabular-nums text-ink">{parse(dateKey).getDate()}</span>
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-                      {WEEKDAY_LONG[parse(dateKey).getDay()]}
-                    </p>
-                    <h3 id="day-popover-title" className="text-[16px] font-semibold tracking-[-0.01em] text-ink">
-                      {formatLongDate(parse(dateKey))}
-                    </h3>
-                  </div>
+                  </h3>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {total + todos.length > 0 && (
                     <button
                       type="button"
                       onClick={exportDay}
-                      title="Export this day as .ics"
-                      className="h-8 rounded-lg border border-line bg-surface px-2.5 text-[11.5px] font-semibold text-ink-2 transition-[background-color,color] hover:bg-surface-2 hover:text-ink"
+                      title="Export this day (.ics)"
+                      className="h-8 rounded-full border border-line/80 bg-surface/70 px-3 text-[11.5px] font-semibold text-ink-2 backdrop-blur-sm transition-[background-color,color] hover:bg-surface hover:text-ink"
                     >
                       Export
                     </button>
@@ -287,204 +315,170 @@ export default function DayPopover({ dateKey, festivals, exams, userEvents, todo
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-lg leading-none text-ink-2 transition-[background-color,color] hover:bg-surface-2 hover:text-ink"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-line/80 bg-surface/70 text-lg leading-none text-ink-2 backdrop-blur-sm transition-[background-color,color] hover:bg-surface hover:text-ink"
                   >
                     ×
                   </button>
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                {/* Left: what's on this day + add */}
-                <div className="min-w-0">
-                  <SectionTitle aside={`${total} ${total === 1 ? "item" : "items"}`}>On this day</SectionTitle>
-                  {total === 0 ? (
-                    <p className="rounded-lg border border-dashed border-line px-3 py-3 text-[12px] text-ink-3">
-                      Nothing scheduled. Add an event below.
-                    </p>
-                  ) : (
-                    <ul className="flex max-h-48 flex-col overflow-y-auto">
-                      <AnimatePresence initial={false}>
-                        {festivals.map((f) => (
-                          <Row
-                            key={f.id}
-                            tone="festival"
-                            icon={f.icon}
-                            title={f.name}
-                            meta={f.description}
-                            tag={
-                              <>
-                                <FestivalBadge tone="festival">Festival</FestivalBadge>
-                                {f.isHoliday && <FestivalBadge tone="holiday">Holiday</FestivalBadge>}
-                              </>
-                            }
-                          />
-                        ))}
-                        {exams.map((x) => (
-                          <Row
-                            key={x.id}
-                            tone={x.kind}
-                            icon={x.icon}
-                            title={x.name}
-                            meta={`${x.org}${x.window ? ` · ${x.window}` : ""}`}
-                            tag={
-                              <>
-                                <FestivalBadge tone={x.kind}>{x.kind === "exam" ? "Exam" : "Result"}</FestivalBadge>
-                                {x.status === "expected" && <FestivalBadge tone="approx">Expected</FestivalBadge>}
-                              </>
-                            }
-                          />
-                        ))}
-                        {userEvents.map((u) => (
-                          <Row
-                            key={u.id}
-                            tone={u.kind === "deadline" ? "due" : "note"}
-                            icon={u.kind === "deadline" ? "⏳" : "📌"}
-                            title={u.title}
-                            tag={
-                              <FestivalBadge tone={u.kind === "deadline" ? "due" : "note"}>
-                                {USER_KIND_LABEL[u.kind]}
-                              </FestivalBadge>
-                            }
-                            onRemove={() => removeUserEvent(u.id)}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </ul>
-                  )}
-
-                  {/* Add event */}
-                  <form onSubmit={submitEvent} className="mt-3 rounded-xl border border-line bg-surface-2/60 p-2.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Add to this day</p>
-                    <input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. Fee payment, Form submission"
-                      maxLength={80}
-                      className="mt-1.5 h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
-                    />
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <div className="flex rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Type">
-                        {(["event", "deadline"] as UserEventKind[]).map((k) => (
-                          <button
-                            key={k}
-                            type="button"
-                            role="radio"
-                            aria-checked={kind === k}
-                            onClick={() => setKind(k)}
-                            className={`h-7 whitespace-nowrap rounded-[6px] px-2.5 text-[11px] font-semibold transition-[background-color,color] ${
-                              kind === k
-                                ? k === "deadline"
-                                  ? "bg-due text-white"
-                                  : "bg-accent text-white"
-                                : "text-ink-2 hover:text-ink"
-                            }`}
-                          >
-                            {k === "deadline" ? "⏳ Last date" : "📌 Event"}
-                          </button>
-                        ))}
-                      </div>
-                      <motion.button
-                        type="submit"
-                        disabled={!title.trim()}
-                        whileTap={{ scale: 0.96 }}
-                        className={`h-8 rounded-lg px-3.5 text-[11.5px] font-semibold text-white shadow-card transition-[opacity,background-color] disabled:cursor-not-allowed disabled:opacity-40 ${
-                          kind === "deadline" ? "bg-due hover:bg-due-strong" : "bg-accent hover:bg-accent-strong"
-                        }`}
-                      >
-                        Add
-                      </motion.button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Right: to-do list */}
-                <div className="min-w-0 sm:border-l sm:border-line sm:pl-5">
-                  <SectionTitle
-                    aside={
-                      todos.length ? (
-                        <span className={allDone ? "font-semibold text-fest-strong" : ""}>
-                          {doneCount}/{todos.length} done
-                        </span>
-                      ) : undefined
-                    }
-                  >
-                    To-do list
-                  </SectionTitle>
-
-                  {/* Progress */}
-                  {todos.length > 0 && (
-                    <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-surface-2 ring-1 ring-inset ring-line">
-                      <motion.div
-                        initial={false}
-                        animate={{ width: `${progress}%` }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className={`h-full rounded-full ${allDone ? "bg-fest" : "brand-gradient"}`}
-                      />
-                    </div>
-                  )}
-
-                  <form onSubmit={submitTodo} className="flex gap-1.5">
-                    <input
-                      ref={todoRef}
-                      autoFocus
-                      value={todoText}
-                      onChange={(e) => setTodoText(e.target.value)}
-                      placeholder="Add a task and press Enter"
-                      maxLength={120}
-                      className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
-                    />
-                    <motion.button
-                      type="submit"
-                      disabled={!todoText.trim()}
-                      whileTap={{ scale: 0.94 }}
-                      aria-label="Add task"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-lg leading-none text-white shadow-card transition-[opacity,background-color] hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      +
-                    </motion.button>
-                  </form>
-
-                  {todos.length === 0 ? (
-                    <p className="mt-3 rounded-lg border border-dashed border-line px-3 py-3 text-[12px] text-ink-3">
-                      No tasks yet. Add what needs doing on this day and tick them off as you go.
-                    </p>
-                  ) : (
-                    <>
-                      <ul className="mt-2 flex max-h-56 flex-col overflow-y-auto">
-                        <AnimatePresence initial={false}>
-                          {todos.map((t) => (
-                            <TodoItem key={t.id} todo={t} />
-                          ))}
-                        </AnimatePresence>
-                      </ul>
-                      <AnimatePresence>
-                        {allDone && (
-                          <motion.p
-                            key="done"
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="mt-2 px-2 text-[12px] font-semibold text-fest-strong"
-                          >
-                            🎉 All done for this day
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                      {doneCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => clearDoneTodos(dateKey)}
-                          className="mt-1.5 px-2 text-[11px] font-medium text-ink-3 underline-offset-2 transition-colors hover:text-ink hover:underline"
-                        >
-                          Clear completed
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
+              {/* Summary chips */}
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-medium">
+                {festivals.length > 0 && (
+                  <span className="rounded-full bg-fest/10 px-2.5 py-1 text-fest-strong">
+                    {festivals.length} festival{festivals.length > 1 ? "s" : ""}
+                  </span>
+                )}
+                {exams.some((e) => e.kind === "exam") && (
+                  <span className="rounded-full bg-exam/10 px-2.5 py-1 text-exam-strong">
+                    {exams.filter((e) => e.kind === "exam").length} exam
+                  </span>
+                )}
+                {exams.some((e) => e.kind === "result") && (
+                  <span className="rounded-full bg-result/10 px-2.5 py-1 text-result-strong">
+                    {exams.filter((e) => e.kind === "result").length} result
+                  </span>
+                )}
+                {userEvents.length > 0 && (
+                  <span className="rounded-full bg-accent/10 px-2.5 py-1 text-accent">
+                    {userEvents.length} of yours
+                  </span>
+                )}
+                {todos.length > 0 && (
+                  <span className={`rounded-full px-2.5 py-1 ${allDone ? "bg-fest/10 text-fest-strong" : "bg-surface-2 text-ink-2"}`}>
+                    {allDone ? "All tasks done" : `${done}/${todos.length} tasks`}
+                  </span>
+                )}
+                {total + todos.length === 0 && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-ink-3">Free day</span>}
               </div>
             </div>
+
+            {/* Scrollable body */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6">
+              {/* On this day */}
+              {total > 0 && (
+                <section className="pb-2">
+                  <p className="pt-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-3">On this day</p>
+                  <ul className="mt-1 divide-y divide-line/60">
+                    <AnimatePresence initial={false}>
+                      {festivals.map((f) => (
+                        <Item key={f.id} tone="festival" icon={f.icon} title={f.name} label={f.isHoliday ? "Festival · Public holiday" : "Festival"} />
+                      ))}
+                      {exams.map((x) => (
+                        <Item
+                          key={x.id}
+                          tone={x.kind}
+                          icon={x.icon}
+                          title={x.name}
+                          label={`${x.kind === "exam" ? "Exam" : "Result"} · ${x.org}${x.status === "expected" ? " · expected" : ""}`}
+                        />
+                      ))}
+                      {userEvents.map((u) => (
+                        <Item
+                          key={u.id}
+                          tone={u.kind === "deadline" ? "due" : "note"}
+                          icon={u.kind === "deadline" ? "⏳" : "📌"}
+                          title={u.title}
+                          label={u.kind === "deadline" ? "Last date" : "My event"}
+                          onRemove={() => removeUserEvent(u.id)}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                </section>
+              )}
+
+              {/* Tasks */}
+              <section className={`pb-3 ${total > 0 ? "mt-3 border-t border-line/60 pt-4" : "pt-1"}`}>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-3">Tasks</p>
+                  <div className="flex items-center gap-2">
+                    {done > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => clearDoneTodos(dateKey)}
+                        className="text-[11px] font-medium text-ink-3 transition-colors hover:text-ink"
+                      >
+                        Clear done
+                      </button>
+                    )}
+                    {todos.length > 0 && <ProgressRing done={done} total={todos.length} />}
+                  </div>
+                </div>
+
+                {todos.length === 0 ? (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-ink-3">
+                    Nothing to do yet. Add tasks below and tick them off as you go.
+                  </p>
+                ) : (
+                  <ul className="mt-1">
+                    <AnimatePresence initial={false}>
+                      {todos.map((t) => (
+                        <TaskItem key={t.id} todo={t} />
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                )}
+                <AnimatePresence>
+                  {allDone && (
+                    <motion.p
+                      key="done"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="mt-1 text-[12px] font-semibold text-fest-strong"
+                    >
+                      🎉 All done for this day
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </section>
+            </div>
+
+            {/* Composer */}
+            <form onSubmit={submit} className="border-t border-line/60 bg-surface-2/50 px-4 py-3 sm:px-5">
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  autoFocus
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={MODE_META[mode].placeholder}
+                  maxLength={120}
+                  className="h-10 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-[13.5px] text-ink shadow-card placeholder:text-ink-3 focus:border-accent focus:outline-none"
+                />
+                <motion.button
+                  type="submit"
+                  disabled={!text.trim()}
+                  whileTap={{ scale: 0.94 }}
+                  aria-label={`Add ${MODE_META[mode].label.toLowerCase()}`}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl leading-none shadow-card transition-[opacity,filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${MODE_META[mode].active}`}
+                >
+                  +
+                </motion.button>
+              </div>
+              <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="What to add">
+                {(Object.keys(MODE_META) as Mode[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m}
+                    onClick={() => {
+                      setMode(m);
+                      inputRef.current?.focus();
+                    }}
+                    className={`h-7 rounded-full px-3 text-[11px] font-semibold transition-[background-color,color] ${
+                      mode === m ? MODE_META[m].active : "text-ink-2 hover:bg-surface hover:text-ink"
+                    }`}
+                  >
+                    <span aria-hidden className="mr-1">{MODE_META[m].icon}</span>
+                    {MODE_META[m].label}
+                  </button>
+                ))}
+                <span className="ml-auto hidden text-[10.5px] text-ink-3 sm:inline">Enter to add</span>
+              </div>
+            </form>
           </motion.div>
         </motion.div>
       )}
