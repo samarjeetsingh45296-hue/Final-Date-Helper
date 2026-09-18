@@ -75,14 +75,6 @@ export function addMonths({ year, month }: MonthKey, delta: number): MonthKey {
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-export function clampYear(year: number): number {
-  return Math.min(MAX_YEAR, Math.max(MIN_YEAR, year));
-}
-
-export function monthLabel({ year, month }: MonthKey): string {
-  return `${MONTH_NAMES[month]} ${year}`;
-}
-
 export function formatLongDate(date: Date): string {
   return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -112,13 +104,4 @@ export function buildMonthGrid({ year, month }: MonthKey, today = new Date()): D
     });
   }
   return cells;
-}
-
-export function countSundays(year: number, month: number): number {
-  const total = daysInMonth(year, month);
-  let count = 0;
-  for (let d = 1; d <= total; d++) {
-    if (new Date(year, month, d).getDay() === 0) count++;
-  }
-  return count;
 }

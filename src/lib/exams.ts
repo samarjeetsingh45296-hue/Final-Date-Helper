@@ -799,66 +799,11 @@ export function getUpcomingResult(today: Date): ExamEvent | null {
   return null;
 }
 
-export interface ExamTimelineRow {
-  year: number;
-  start: string;
-  end?: string;
-  result?: string;
-  status: ExamStatus;
-  resultStatus: ExamStatus;
-  /** Days later (+) or earlier (−) than the same session the previous year */
-  shiftDays: number | null;
-}
-
-export interface ExamTimeline {
-  key: string;
-  name: string;
-  short: string;
-  org: string;
-  icon: string;
-  rows: ExamTimelineRow[];
-}
-
-/** Whole-day distance between two ISO dates (b − a). */
+/** Whole-day distance between two ISO dates (b - a). */
 function dayDiff(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
   const [by, bm, bd] = b.split("-").map(Number);
   return Math.round((new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime()) / 86_400_000);
-}
-
-/**
- * Year-on-year view of one exam: the first session of every year we have
- * data for, with how many days it moved compared to the previous year.
- */
-export function getExamTimeline(examKey: string): ExamTimeline | null {
-  const def = EXAMS.find((d) => d.key === examKey);
-  if (!def) return null;
-  const years = Object.keys(def.years).map(Number).sort((a, b) => a - b);
-  const rows: ExamTimelineRow[] = [];
-  let prev: { year: number; start: string } | null = null;
-  for (const year of years) {
-    const s = def.years[year]?.[0];
-    if (!s) continue;
-    let shiftDays: number | null = null;
-    if (prev) {
-      // Compare against the previous year's date shifted forward by the year gap
-      const [py, pm, pd] = prev.start.split("-").map(Number);
-      const yearGap = year - prev.year;
-      const shifted = `${py + yearGap}-${pm < 10 ? "0" : ""}${pm}-${pd < 10 ? "0" : ""}${pd}`;
-      shiftDays = dayDiff(shifted, s.start);
-    }
-    rows.push({
-      year,
-      start: s.start,
-      end: s.end,
-      result: s.result,
-      status: s.status,
-      resultStatus: s.resultStatus ?? s.status,
-      shiftDays,
-    });
-    prev = { year, start: s.start };
-  }
-  return { key: def.key, name: def.name, short: def.short, org: def.org, icon: def.icon, rows };
 }
 
 export interface MonthComparisonRow {

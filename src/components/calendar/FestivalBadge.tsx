@@ -1,4 +1,4 @@
-import { CATEGORY_LABEL, type FestivalCategory } from "@/lib/festivals";
+import type { FestivalCategory } from "@/lib/festivals";
 
 type Tone =
   | "festival"
@@ -67,8 +67,4 @@ export default function FestivalBadge({
       <span className="truncate">{children}</span>
     </span>
   );
-}
-
-export function categoryLabel(category: FestivalCategory): string {
-  return CATEGORY_LABEL[category];
 }

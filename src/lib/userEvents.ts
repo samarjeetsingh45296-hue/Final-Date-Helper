@@ -92,8 +92,3 @@ export function indexUserEvents(events: UserEvent[]): Map<string, UserEvent[]> {
   }
   return map;
 }
-
-export const USER_KIND_LABEL: Record<UserEventKind, string> = {
-  event: "My event",
-  deadline: "Last date",
-};

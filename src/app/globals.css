@@ -34,11 +34,6 @@
   --color-due-soft: #faf5ff;
   --color-due-line: #e9d5ff;
 
-  /* Sunday (rose) */
-  --color-sun: #e11d48;
-  --color-sun-soft: #fff5f6;
-  --color-sun-line: #fecdd3;
-
   /* Festival (emerald) */
   --color-fest: #059669;
   --color-fest-strong: #047857;
@@ -182,10 +177,6 @@
   --color-due-strong: #d8b4fe;
   --color-due-soft: #2a1440;
   --color-due-line: #4c1d95;
-
-  --color-sun: #fb7185;
-  --color-sun-soft: #2a1219;
-  --color-sun-line: #4c1d2a;
 
   --color-fest: #34d399;
   --color-fest-strong: #6ee7b7;

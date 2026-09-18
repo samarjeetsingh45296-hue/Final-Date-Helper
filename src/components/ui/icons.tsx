@@ -86,25 +86,6 @@ export function Sparkle(props: IconProps) {
   );
 }
 
-export function Grid(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
-    </svg>
-  );
-}
-
-export function Flag(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5" />
-    </svg>
-  );
-}
-
 export function Plus(props: IconProps) {
   return (
     <svg {...base} {...props}>
