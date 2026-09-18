@@ -306,11 +306,6 @@ export default function EventsList({ year }: EventsListProps) {
   const maxPerMonth = Math.max(...months.map((x) => x.items.length), 1);
   const currentMonth = today && today.getFullYear() === year ? today.getMonth() : -1;
 
-  const counts = useMemo(
-    () => Object.fromEntries(VIEWS.map((v) => [v.key, buildItems(year, v.key).length])) as Record<View, number>,
-    [year],
-  );
-
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
       {/* Top bar */}
@@ -409,13 +404,6 @@ export default function EventsList({ year }: EventsListProps) {
             >
               <span aria-hidden>{v.icon}</span>
               {v.label}
-              <span
-                className={`rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
-                  active ? "bg-white/20 text-white" : "bg-surface-2 text-ink-3 ring-1 ring-inset ring-line"
-                }`}
-              >
-                {counts[v.key]}
-              </span>
             </motion.button>
           );
         })}

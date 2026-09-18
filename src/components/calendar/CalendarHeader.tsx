@@ -13,7 +13,6 @@ interface CalendarHeaderProps {
   onToday: () => void;
   onYearChange: (year: number) => void;
   onMonthChange: (month: number) => void;
-  festivalCount: number;
 }
 
 const YEAR_OPTIONS = Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, i) => {
@@ -29,7 +28,6 @@ export default function CalendarHeader({
   onToday,
   onYearChange,
   onMonthChange,
-  festivalCount,
 }: CalendarHeaderProps) {
   return (
     <motion.header
@@ -78,9 +76,6 @@ export default function CalendarHeader({
           >
             <Sparkle className="h-4 w-4" />
             Events
-            <span className="rounded-md bg-surface px-1.5 text-[11px] font-semibold tabular-nums text-fest-strong ring-1 ring-inset ring-fest-line">
-              {festivalCount}
-            </span>
           </Link>
         </motion.div>
         <div className="flex flex-1 items-center gap-2 sm:flex-none">

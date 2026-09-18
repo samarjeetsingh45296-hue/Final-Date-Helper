@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { buildMonthGrid, MONTH_NAMES } from "@/lib/calendar";
-import { getFestivalsForMonth, getFestivalsForYear, indexByDate } from "@/lib/festivals";
+import { getFestivalsForMonth, indexByDate } from "@/lib/festivals";
 import { getExamEventsForMonth, type ExamEvent } from "@/lib/exams";
 import { indexUserEvents, useUserEvents } from "@/lib/userEvents";
 import { indexTodos, useTodos } from "@/lib/todos";
@@ -177,7 +177,6 @@ export default function CalendarDashboard() {
         onToday={cal.goToday}
         onYearChange={cal.setYear}
         onMonthChange={cal.setMonth}
-        festivalCount={view ? getFestivalsForYear(view.year).length : 0}
       />
 
       <NextUp today={today} view={view} onJump={jumpTo} />
